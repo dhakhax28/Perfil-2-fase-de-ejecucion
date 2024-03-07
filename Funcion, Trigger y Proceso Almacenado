@@ -1,0 +1,81 @@
+USE db_fon2;
+
+--
+-- Funcion
+--
+
+DELIMITER //
+CREATE FUNCTION obtener_productos_por_marca(nombreMarca ENUM('Samsung', 'Iphone', 'Alcaltel', 'Xiaomi')) RETURNS VARCHAR(255)
+BEGIN
+  DECLARE productos VARCHAR(255);
+  
+  SELECT GROUP_CONCAT(producto_marcar) INTO productos
+  FROM tb_marcas_fon
+  WHERE nombre_Marca = nombreMarca;
+  
+  RETURN productos;
+END //
+DELIMITER ;
+
+SELECT obtener_productos_por_marca('Samsung');
+
+--
+-- Trigger
+--
+
+DELIMITER //
+
+CREATE TRIGGER before_insert_tb_detalles_reservas_fon
+BEFORE INSERT ON tb_detalles_reservas_fon
+FOR EACH ROW
+BEGIN
+    DECLARE producto_marca VARCHAR(50);
+
+    -- Obtener la marca del producto
+    SELECT nombre_Marca INTO producto_marca
+    FROM tb_marcas_fon
+    WHERE id_Marca_Fon = NEW.id_Producto_Fon;
+
+    -- Modificar el valor de la columna 'log_message' en la misma fila que se está insertando
+    SET NEW.log_message = CONCAT('Se ha insertado un detalle de reserva para el producto de marca: ', producto_marca);
+END //
+
+DELIMITER ;
+
+SELECT * FROM tb_detalles_reservas_fon WHERE id_Detalle_Reserva_Fon = 15;
+
+--
+-- Procedimiento Almacenado
+--
+
+DELIMITER //
+
+CREATE PROCEDURE sp_actualizar_detalle_reserva(
+    IN p_id_reserva INT,
+    IN p_nuevo_precio DECIMAL(10,0),
+    IN p_nueva_cantidad INT,
+    IN p_nuevo_log_message VARCHAR(255),
+    IN p_nuevo_id_producto_fon INT
+)
+BEGIN
+    UPDATE tb_detalles_reservas_fon
+    SET
+        precio = p_nuevo_precio,
+        cantidad = p_nueva_cantidad,
+        log_message = p_nuevo_log_message,
+        id_Producto_Fon = p_nuevo_id_producto_fon
+    WHERE
+        id_Reserva_Fon = p_id_reserva;
+END //
+
+DELIMITER ;
+
+CALL sp_actualizar_detalle_reserva(
+    1, -- p_id_reserva
+    150, -- p_nuevo_precio
+    5, -- p_nueva_cantidad
+    'Nuevo mensaje de registro', -- p_nuevo_log_message
+    26 -- p_nuevo_id_producto_fon
+);
+
+SELECT * FROM tb_detalles_reservas_fon WHERE id_Reserva_Fon = 1;
